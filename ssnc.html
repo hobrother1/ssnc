@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMR 스마트 넷제로 시티</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Inter 폰트 적용 */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* 밝은 회색 배경 */
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden; /* 스크롤 방지 */
+        }
+
+        .game-container {
+            width: 100%;
+            max-width: 800px; /* 최대 너비 설정 */
+            height: 90vh; /* 화면 높이의 90% */
+            max-height: 700px; /* 최대 높이 설정 */
+            background-color: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .screen {
+            width: 100%;
+            height: 100%;
+            display: none; /* 기본적으로 모든 화면 숨김 */
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            box-sizing: border-box;
+            position: absolute;
+            top: 0;
+            left: 0;
+            transition: opacity 0.5s ease-in-out;
+            opacity: 0;
+        }
+
+        .screen.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        /* 메인 맵 스타일 */
+        #main-map-screen .map-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr); /* 2x2 그리드 (발전, 상업, 도시, 빈칸) */
+            grid-template-rows: repeat(2, 1fr);
+            gap: 20px;
+            width: 90%;
+            height: 70%;
+            max-width: 600px;
+            max-height: 500px;
+        }
+
+        .map-zone {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: #e2e8f0; /* 구역 배경색 */
+            border-radius: 15px;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+            padding: 15px;
+            text-align: center;
+        }
+
+        .map-zone:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .map-zone-icon {
+            font-size: 3rem; /* 아이콘 크기 */
+            margin-bottom: 10px;
+        }
+
+        .map-zone-title {
+            font-size: 1.25rem; /* 제목 크기 */
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        /* 각 구역 상세 화면 공통 스타일 */
+        .zone-header {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e2e8f0;
+            margin-bottom: 20px;
+        }
+
+        .zone-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #2c5282;
+        }
+
+        .stats-bar {
+            display: flex;
+            gap: 20px;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 1rem;
+            color: #4a5568;
+        }
+
+        .stat-value {
+            font-weight: 700;
+            color: #2d3748;
+            font-size: 1.1rem;
+        }
+
+        .zone-content {
+            width: 100%;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            overflow-y: auto; /* 내용이 길어지면 스크롤 */
+            padding-top: 10px;
+        }
+
+        .action-button {
+            background-color: #4299e1; /* 파란색 버튼 */
+            color: white;
+            padding: 12px 25px;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            margin: 10px;
+            cursor: pointer;
+            border: none;
+        }
+
+        .action-button:hover {
+            background-color: #3182ce;
+            transform: translateY(-2px);
+        }
+
+        .action-button:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+
+        .back-button {
+            background-color: #a0aec0; /* 회색 버튼 */
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: background-color 0.2s ease;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
+            cursor: pointer;
+            border: none;
+        }
+
+        .back-button:hover {
+            background-color: #718096;
+        }
+
+        /* 발전 구역 특정 스타일 */
+        .power-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 15px;
+            width: 100%;
+            max-width: 600px;
+            margin-top: 20px;
+        }
+
+        .power-plant-slot {
+            background-color: #edf2f7;
+            border: 2px dashed #cbd5e0;
+            border-radius: 8px;
+            min-height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #718096;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        .power-plant-slot.occupied {
+            background-color: #90cdf4; /* 발전소 건설 시 색상 */
+            border: 2px solid #4299e1;
+            color: #2b6cb0;
+            font-weight: 600;
+        }
+
+        /* 상업 구역 특정 스타일 */
+        .commercial-sections {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .commercial-card {
+            background-color: #e6fffa; /* 연한 청록색 */
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+            text-align: center;
+        }
+
+        .commercial-card h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #2c7a7b;
+            margin-bottom: 10px;
+        }
+
+        /* 도시 구역 특정 스타일 */
+        .city-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+            gap: 10px;
+            width: 100%;
+            max-width: 600px;
+            margin-top: 20px;
+            min-height: 200px;
+            background-color: #d1fae5; /* 연한 녹색 도시 배경 */
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .city-plot {
+            background-color: #a7f3d0; /* 빈 땅 색상 */
+            border-radius: 5px;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            color: #10b981;
+            cursor: pointer;
+            transition: background-color 0.1s ease;
+        }
+
+        .city-plot:hover {
+            background-color: #6ee7b7;
+        }
+
+        .city-plot.house {
+            background-color: #fbd38d; /* 집 색상 */
+            color: #975a16;
+            font-weight: 600;
+        }
+
+        .city-plot.park {
+            background-color: #9ae6b4; /* 공원 색상 */
+            color: #2f855a;
+            font-weight: 600;
+        }
+
+        /* 로딩 스피너 (이미지 생성 대체) */
+        .loading-spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #4299e1;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <!-- 초기 화면: 전체 맵 -->
+        <div id="main-map-screen" class="screen active">
+            <div class="loading-spinner"></div>
+            <h1 class="text-4xl font-bold mb-8 text-blue-800">SMR 스마트 넷제로 시티</h1>
+            <p class="text-lg text-gray-600 mb-10">원하는 구역을 선택하여 도시를 건설하고 성장시키세요!</p>
+            <div class="map-grid">
+                <div id="power-zone" class="map-zone bg-blue-100" data-target="power-zone-screen">
+                    <span class="map-zone-icon">⚡</span>
+                    <span class="map-zone-title">발전 구역</span>
+                    <p class="text-sm text-gray-500 mt-2">전력 생산 및 시설 관리</p>
+                </div>
+                <div id="commercial-zone" class="map-zone bg-green-100" data-target="commercial-zone-screen">
+                    <span class="map-zone-icon">💰</span>
+                    <span class="map-zone-title">상업 구역</span>
+                    <p class="text-sm text-gray-500 mt-2">전력 판매 및 기술 연구</p>
+                </div>
+                <div id="city-zone" class="map-zone bg-yellow-100" data-target="city-zone-screen">
+                    <span class="map-zone-icon">🏡</span>
+                    <span class="map-zone-title">도시 구역</span>
+                    <p class="text-sm text-gray-500 mt-2">도시 건설 및 성장</p>
+                </div>
+                <!-- 빈 공간 또는 정보 표시용 (선택사항) -->
+                <div class="map-zone bg-gray-100 cursor-default">
+                    <span class="map-zone-icon text-gray-400">📊</span>
+                    <span class="map-zone-title text-gray-500">통계 및 정보</span>
+                    <p class="text-sm text-gray-400 mt-2">총 자산, 인구 등</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 상세 구역: 발전 구역 -->
+        <div id="power-zone-screen" class="screen">
+            <div class="zone-header">
+                <h2 class="zone-title">발전 구역</h2>
+                <div class="stats-bar">
+                    <div class="stat-item">
+                        <span>자금</span>
+                        <span id="power-money" class="stat-value">$1,000,000</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>에너지 생산</span>
+                        <span id="power-energy" class="stat-value">1000 MW</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>연구 포인트</span>
+                        <span id="power-research" class="stat-value">500 RP</span>
+                    </div>
+                </div>
+            </div>
+            <div class="zone-content">
+                <p class="text-lg text-gray-700 mb-5">발전 시설을 건설하고 업그레이드하여 에너지를 생산하세요.</p>
+                <div class="power-grid">
+                    <!-- 발전소 슬롯 예시 -->
+                    <div class="power-plant-slot">빈 슬롯</div>
+                    <div class="power-plant-slot">빈 슬롯</div>
+                    <div class="power-plant-slot occupied">SMR (Lv.1)</div>
+                    <div class="power-plant-slot">빈 슬롯</div>
+                    <div class="power-plant-slot">빈 슬롯</div>
+                    <div class="power-plant-slot">빈 슬롯</div>
+                </div>
+                <div class="flex flex-wrap justify-center mt-5">
+                    <button class="action-button" onclick="buildPowerPlant()">SMR 건설 ($500,000)</button>
+                    <button class="action-button" onclick="upgradePowerPlant()">발전소 업그레이드</button>
+                    <button class="action-button" onclick="researchPowerTech()">새 기술 연구</button>
+                </div>
+            </div>
+            <button class="back-button" data-target="main-map-screen">맵으로 돌아가기</button>
+        </div>
+
+        <!-- 상세 구역: 상업 구역 -->
+        <div id="commercial-zone-screen" class="screen">
+            <div class="zone-header">
+                <h2 class="zone-title">상업 구역</h2>
+                <div class="stats-bar">
+                    <div class="stat-item">
+                        <span>자금</span>
+                        <span id="commercial-money" class="stat-value">$1,000,000</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>에너지 판매</span>
+                        <span id="commercial-sales" class="stat-value">500 MW/h</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>기술 레벨</span>
+                        <span id="commercial-tech" class="stat-value">Lv. 3</span>
+                    </div>
+                </div>
+            </div>
+            <div class="zone-content">
+                <p class="text-lg text-gray-700 mb-5">생산된 에너지를 판매하고, 새로운 기술을 개발하세요.</p>
+                <div class="commercial-sections">
+                    <div class="commercial-card bg-teal-100">
+                        <h3>에너지 판매</h3>
+                        <p class="text-gray-600 mb-3">현재 에너지 가격: $0.15/MW</p>
+                        <button class="action-button bg-teal-600 hover:bg-teal-700" onclick="sellEnergy()">에너지 판매</button>
+                    </div>
+                    <div class="commercial-card bg-purple-100">
+                        <h3>기술 발전</h3>
+                        <p class="text-gray-600 mb-3">다음 연구: 스마트 그리드 시스템 (1000 RP)</p>
+                        <button class="action-button bg-purple-600 hover:bg-purple-700" onclick="developTech()">기술 개발</button>
+                    </div>
+                    <div class="commercial-card bg-orange-100">
+                        <h3>시장 동향</h3>
+                        <p class="text-gray-600">수요 증가 예상: +10%</p>
+                    </div>
+                </div>
+            </div>
+            <button class="back-button" data-target="main-map-screen">맵으로 돌아가기</button>
+        </div>
+
+        <!-- 상세 구역: 도시 구역 -->
+        <div id="city-zone-screen" class="screen">
+            <div class="zone-header">
+                <h2 class="zone-title">도시 구역</h2>
+                <div class="stats-bar">
+                    <div class="stat-item">
+                        <span>자금</span>
+                        <span id="city-money" class="stat-value">$1,000,000</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>인구</span>
+                        <span id="city-population" class="stat-value">10,000 명</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>행복도</span>
+                        <span id="city-happiness" class="stat-value">85%</span>
+                    </div>
+                </div>
+            </div>
+            <div class="zone-content">
+                <p class="text-lg text-gray-700 mb-5">발전과 상업으로 얻은 리워드로 도시를 꾸미고 성장시키세요.</p>
+                <div class="city-grid">
+                    <!-- 도시 건설 슬롯 예시 -->
+                    <div class="city-plot">빈 땅</div>
+                    <div class="city-plot house">집</div>
+                    <div class="city-plot">빈 땅</div>
+                    <div class="city-plot park">공원</div>
+                    <div class="city-plot">빈 땅</div>
+                    <div class="city-plot">빈 땅</div>
+                    <div class="city-plot">빈 땅</div>
+                    <div class="city-plot">빈 땅</div>
+                    <div class="city-plot">빈 땅</div>
+                </div>
+                <div class="flex flex-wrap justify-center mt-5">
+                    <button class="action-button" onclick="buildHouse()">집 건설 ($100,000)</button>
+                    <button class="action-button" onclick="buildPark()">공원 건설 ($50,000)</button>
+                    <button class="action-button" onclick="upgradeCity()">도시 업그레이드</button>
+                </div>
+            </div>
+            <button class="back-button" data-target="main-map-screen">맵으로 돌아가기</button>
+        </div>
+    </div>
+
+    <script>
+        // 현재 활성화된 화면 ID
+        let currentScreenId = 'main-map-screen';
+
+        // 화면 전환 함수
+        function showScreen(screenId) {
+            const currentScreen = document.getElementById(currentScreenId);
+            const nextScreen = document.getElementById(screenId);
+
+            if (currentScreen) {
+                currentScreen.classList.remove('active');
+                // 애니메이션을 위해 잠시 기다림
+                setTimeout(() => {
+                    currentScreen.style.display = 'none';
+                }, 500); // CSS transition duration과 일치
+            }
+
+            if (nextScreen) {
+                nextScreen.style.display = 'flex'; // 먼저 flex로 설정하여 레이아웃 계산
+                setTimeout(() => {
+                    nextScreen.classList.add('active');
+                }, 10); // 짧은 지연으로 transition 트리거
+                currentScreenId = screenId;
+            }
+        }
+
+        // 초기 맵 구역 클릭 이벤트 리스너
+        document.querySelectorAll('.map-zone').forEach(zone => {
+            zone.addEventListener('click', (event) => {
+                const targetScreenId = event.currentTarget.dataset.target;
+                if (targetScreenId) {
+                    showScreen(targetScreenId);
+                }
+            });
+        });
+
+        // '맵으로 돌아가기' 버튼 이벤트 리스너
+        document.querySelectorAll('.back-button').forEach(button => {
+            button.addEventListener('click', (event) => {
+                const targetScreenId = event.currentTarget.dataset.target;
+                if (targetScreenId) {
+                    showScreen(targetScreenId);
+                }
+            });
+        });
+
+        // --- 각 구역별 시뮬레이션 함수 (실제 게임 로직은 아님, UI 업데이트 예시) ---
+
+        // 발전 구역 함수
+        function buildPowerPlant() {
+            const powerMoney = document.getElementById('power-money');
+            let currentMoney = parseInt(powerMoney.textContent.replace(/[^0-9]/g, ''));
+            if (currentMoney >= 500000) {
+                currentMoney -= 500000;
+                powerMoney.textContent = `$${currentMoney.toLocaleString()}`;
+                const powerEnergy = document.getElementById('power-energy');
+                let currentEnergy = parseInt(powerEnergy.textContent.replace(/[^0-9]/g, ''));
+                currentEnergy += 500; // 에너지 생산량 증가
+                powerEnergy.textContent = `${currentEnergy} MW`;
+
+                // 빈 슬롯에 발전소 건설 시뮬레이션
+                const emptySlot = document.querySelector('.power-plant-slot:not(.occupied)');
+                if (emptySlot) {
+                    emptySlot.classList.add('occupied');
+                    emptySlot.textContent = 'SMR (Lv.1)';
+                    showMessage('SMR이 건설되었습니다!');
+                } else {
+                    showMessage('더 이상 건설할 공간이 없습니다!');
+                }
+            } else {
+                showMessage('자금이 부족합니다!');
+            }
+        }
+
+        function upgradePowerPlant() {
+            showMessage('발전소를 업그레이드했습니다! (기능 미구현)');
+        }
+
+        function researchPowerTech() {
+            showMessage('새로운 발전 기술을 연구했습니다! (기능 미구현)');
+        }
+
+        // 상업 구역 함수
+        function sellEnergy() {
+            const commercialMoney = document.getElementById('commercial-money');
+            let currentMoney = parseInt(commercialMoney.textContent.replace(/[^0-9]/g, ''));
+            const commercialSales = document.getElementById('commercial-sales');
+            let currentSales = parseInt(commercialSales.textContent.replace(/[^0-9]/g, ''));
+
+            const earnedMoney = currentSales * 0.15; // 간단한 판매 수익 계산
+            currentMoney += earnedMoney;
+            commercialMoney.textContent = `$${Math.round(currentMoney).toLocaleString()}`;
+            showMessage(`에너지를 판매하여 $${Math.round(earnedMoney).toLocaleString()}를 얻었습니다!`);
+        }
+
+        function developTech() {
+            showMessage('기술을 개발했습니다! (기능 미구현)');
+        }
+
+        // 도시 구역 함수
+        function buildHouse() {
+            const cityMoney = document.getElementById('city-money');
+            let currentMoney = parseInt(cityMoney.textContent.replace(/[^0-9]/g, ''));
+            if (currentMoney >= 100000) {
+                currentMoney -= 100000;
+                cityMoney.textContent = `$${currentMoney.toLocaleString()}`;
+                const cityPopulation = document.getElementById('city-population');
+                let currentPopulation = parseInt(cityPopulation.textContent.replace(/[^0-9]/g, ''));
+                currentPopulation += 100; // 인구 증가
+                cityPopulation.textContent = `${currentPopulation.toLocaleString()} 명`;
+
+                // 빈 땅에 집 건설 시뮬레이션
+                const emptyPlot = document.querySelector('.city-plot:not(.house):not(.park)');
+                if (emptyPlot) {
+                    emptyPlot.classList.add('house');
+                    emptyPlot.textContent = '집';
+                    showMessage('집이 건설되었습니다!');
+                } else {
+                    showMessage('더 이상 건설할 공간이 없습니다!');
+                }
+            } else {
+                showMessage('자금이 부족합니다!');
+            }
+        }
+
+        function buildPark() {
+            const cityMoney = document.getElementById('city-money');
+            let currentMoney = parseInt(cityMoney.textContent.replace(/[^0-9]/g, ''));
+            if (currentMoney >= 50000) {
+                currentMoney -= 50000;
+                cityMoney.textContent = `$${currentMoney.toLocaleString()}`;
+                const cityHappiness = document.getElementById('city-happiness');
+                let currentHappiness = parseInt(cityHappiness.textContent.replace(/[^0-9]/g, ''));
+                currentHappiness = Math.min(100, currentHappiness + 5); // 행복도 증가 (최대 100)
+                cityHappiness.textContent = `${currentHappiness}%`;
+
+                // 빈 땅에 공원 건설 시뮬레이션
+                const emptyPlot = document.querySelector('.city-plot:not(.house):not(.park)');
+                if (emptyPlot) {
+                    emptyPlot.classList.add('park');
+                    emptyPlot.textContent = '공원';
+                    showMessage('공원이 건설되었습니다!');
+                } else {
+                    showMessage('더 이상 건설할 공간이 없습니다!');
+                }
+            } else {
+                showMessage('자금이 부족합니다!');
+            }
+        }
+
+        function upgradeCity() {
+            showMessage('도시가 업그레이드되었습니다! (기능 미구현)');
+        }
+
+        // 메시지 박스 표시 함수 (alert 대신 사용)
+        function showMessage(message) {
+            let messageBox = document.getElementById('message-box');
+            if (!messageBox) {
+                messageBox = document.createElement('div');
+                messageBox.id = 'message-box';
+                messageBox.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background-color: rgba(0, 0, 0, 0.7);
+                    color: white;
+                    padding: 10px 20px;
+                    border-radius: 8px;
+                    z-index: 1000;
+                    opacity: 0;
+                    transition: opacity 0.5s ease-in-out;
+                    font-size: 1rem;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+                `;
+                document.body.appendChild(messageBox);
+            }
+            messageBox.textContent = message;
+            messageBox.style.opacity = 1;
+            setTimeout(() => {
+                messageBox.style.opacity = 0;
+            }, 3000); // 3초 후 사라짐
+        }
+
+        // 초기 로딩 스피너 숨기기
+        window.onload = function() {
+            const spinner = document.querySelector('.loading-spinner');
+            if (spinner) {
+                spinner.style.display = 'none';
+            }
+        };
+    </script>
+</body>
+</html>
+
